@@ -52,68 +52,12 @@ echo -e "${GREEN_BOLD}* Updating tidocker_mbed from DockerHub ${NC}"
 docker pull tecintegral/tidocker_mbed:latest
 
 #############################################
-#### Construir imagen de deploy TEMPERA-TIS #####################################
 
-echo -e "${GREEN_BOLD}* Compiling TEMPERA-TIS in mbed container ...${NC}"
-
-ARM_COMPILER="GCC_ARM"
-TARGET="NUCLEO_F429ZI"
-
-ARCH_DIR="${DIR}/docker/TIS/tmp"
-BIN_DIR="${ARCH_DIR}/BUILD/${TARGET}/${ARM_COMPILER}/"
-# echo "BIN_vDIR: ${BIN_DIR}"
-rm -rf ${ARCH_DIR}
-mkdir -p ${ARCH_DIR}
-git --git-dir=${DIR}/src/tempera-tis/.git --work-tree=${DIR}/src/tempera-tis/ archive HEAD | tar xf - -C ${ARCH_DIR}
-TIS_VERSION=$(sh ${DIR}/scripts/version_info.sh -d ${DIR}/src/tempera-tis)
-# echo "TIS_VERSION: ${TIS_VERSION}"
-BIN_TAG_NAME="tempera-tis-${TIS_VERSION}.bin"
-# echo "BIN_TAG_NAME: ${BIN_TAG_NAME}"
-
-if [ ! -f "$BIN_TAG_NAME" ]; then
-  echo -e "${GREEN}* Creating tecintegral/tidocker_mbed container ...${NC}"
-
-  ## Create mbed comiler container
-  if [ ! "$(docker ps -q -f name=mbed_compiler_1)" ]; then
-    docker run -d -v ${ARCH_DIR}:/tempera-tis:z -w /tempera-tis --name mbed_compiler_1 tecintegral/tidocker_mbed tail -f /dev/null
-  fi
-  echo -e "${GREEN}* Compiling tempera-tis ...${NC}"
-  ## Create mbed project
-  docker exec -it mbed_compiler_1 mbed new .
-  ## Compile mbed project
-  docker exec -it mbed_compiler_1 mbed compile -t GCC_ARM -m NUCLEO_F429ZI
-
-  BIN_NAME=$(basename $BIN_DIR/*.bin)
-  BIN_SHORT_NAME=${BIN_NAME%.*}
-  BIN_TAG_NAME="${BIN_SHORT_NAME}-${TIS_VERSION}.bin"
-  # echo "BIN_TAG_NAME: ${BIN_TAG_NAME}"
-
-  ## Copy output binaries to root folder
-  cp $BIN_DIR$BIN_NAME $BIN_TAG_NAME
-  # echo "File name: $BIN_DIR$BIN_NAME"
-  ## Delete mbed build files
-  docker exec -it mbed_compiler_1 rm -rf BUILD mbed-os .git __pycache__
-
-  ## Stop and remove containers
-  echo -e "${GREEN}* Removing tecintegral/tidocker_mbed container ...${NC}"
-  docker stop mbed_compiler_1
-  docker rm --volumes mbed_compiler_1
-
-  rm -rf ${ARCH_DIR}
-else
-  echo -e "Binary file ${BIN_TAG_NAME} already exists."
-fi
-
-echo -e "${GREEN}* Copying files... ${NC}"
-cp ${DIR}/${BIN_TAG_NAME} ${DIR}/scripts
 cp -r ${DIR}/scripts/ ${OUT}
 
 echo -e "${GREEN}* Downloading MQTT image...  ${NC}"
 docker pull eclipse-mosquitto
-#docker build . -f docker/mqtt/Dockerfile \
-#    -t tempera_mqtt:${TAG} -t tempera_mqtt:latest
 
-#IMAGES+="eclipse-mosquitto:${TAG} eclipse-mosquitto:latest "
 IMAGES+="eclipse-mosquitto:latest "
 ###imagen de los contenedores####
 echo -e "${GREEN}* Downloading Alpine Linux image...  ${NC}"
