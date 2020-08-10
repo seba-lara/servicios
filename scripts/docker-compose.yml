@@ -1,0 +1,56 @@
+version: '2'
+services:
+ ntp:
+       image: tempera_ntp
+       container_name: tempera_ntp_1
+       network_mode: host
+#       ports:
+#       - "123:123"
+       volumes:
+       - $HOME/tempera-server/ntp/ntp.conf:/etc/ntp.conf:rw
+       - /etc/localtime:/etc/localtime:ro
+#       dns: ["0.0.0.0"]
+#       privileged: true
+       command: ["ntpd", "-d", "-c", "/etc/ntp.conf"]
+ dhcpd:
+       image: tempera_dhcp
+       container_name: tempera_dhcp_1
+       ports:
+       - "67:67"
+       dns: ["0.0.0.0"]
+       network_mode: "host"
+       volumes:
+       - $HOME/tempera-server/dhcp:/etc/dhcp
+       - $HOME/tempera-server/dhcp:/var/lib/dhcp
+       command: "dhcpd -4 -f -d --no-pid -cf /etc/dhcp/dhcpd.conf"
+       restart: unless-stopped
+ httpd:
+       image: tempera_minihttp
+       container_name: tempera_minihttp_1
+       network_mode: "host"
+       ports:
+       - "80:80"
+       dns: ["0.0.0.0"]
+       volumes:
+       - $HOME/tempera-server/http:/www
+       command: "mini_httpd -C /etc/mini_httpd/mini_httpd.conf.orig -D"
+       restart: unless-stopped
+ mqtt:
+       image: eclipse-mosquitto
+       container_name: tempera_mosquitto_1
+       ports:
+       - "1883:1883"
+       - "9001:9001"
+#       volumes:
+#       - mosquitto.conf:/mosquitto/config/mosquitto.conf:rw
+       dns: ["0.0.0.0"]
+ mbed:
+       image: tecintegral/tidocker_mbed
+       container_name: mbed_compiler_1
+       ports:
+       - "7900:7900"
+       - "7829:7829"
+       volumes:
+       - $HOME/tempera-server/tempera-tis:/tempera-tis:rw
+       working_dir: "/tempera-tis"
+       command: "tail -f /dev/null"
